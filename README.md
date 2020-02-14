@@ -1,6 +1,16 @@
 # SpringMVC-shiro-cas-sso
 shiro + cas sso 单点登录
 
+## 项目目录
+- cas-overlay-template
+
+        cas服务器
+- SpringMVC-shiro-cas
+
+        shiro客户端
+- table
+
+        数据库表
 https://blog.csdn.net/JsongNeu/article/details/104301042
 
 项目框架
