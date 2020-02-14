@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd">
+
+    <!-- 自动注入properties属性文件 -->
+    <!--    <bean id="propertyConfigurer" class="org.springframework.beans.factory.config.PropertiesFactoryBean" >-->
+    <bean id="propertyConfigurer" class="org.springframework.beans.factory.config.PropertyPlaceholderConfigurer" >
+        <property name="locations">
+            <list>
+                <value>classpath:conf/shiro.properties</value>
+            </list>
+        </property>
+        <!--        <property name="ignoreUnresolvablePlaceholders" value="true"></property>-->
+    </bean>
+    <!-- 配置shiroFilterFactoryBean,bean的id默认情况下必须与web.xml文件中DelegatingFilterProxy过滤器的filter-name相同,可以通过filter的targetBeanName初始化参数进行修改 -->
+    <bean id="shiroFilter" class="org.apache.shiro.spring.web.ShiroFilterFactoryBean">
+        <!-- 注入securityManager -->
+        <property name="securityManager" ref="securityManager"/>
+        <!-- 设置登录URL,当用户未认证,但访问了需要认证后才能访问的页面,就会自动重定向到登录URL -->
+        <property name="loginUrl" value="${shiro.loginUrl}"/>
+        <!-- 设置没有权限的URL,当用户认证后,访问一个页面却没有权限时,就会自动重定向到没有权限的URL,若用户未认证访问一个需要权限的URL时,会跳转到登录URL -->
+        <property name="unauthorizedUrl" value="/unauthorized.html"/>
+        <!-- 将Filter添加到Shiro过滤器链中,用于对资源设置权限 -->
+        <property name="filters">
+            <map>
+                <entry key="casFilter" value-ref="casFilter"/>
+                <entry key="logoutFilter" value-ref="logoutFilter"/>
+            </map>
+        </property>
+        <!-- 配置哪些请求需要受保护,以及访问这些页面需要的权限 -->
+        <property name="filterChainDefinitions">
+            <value>
+                /logout = logoutFilter
+                /jsong = casFilter
+                <!--                /shiro-cas=casFilter-->
+                <!--                /test/**=authc-->
+                /** = authc
+<!--                /test/** = authc-->
+<!--                /test/** = roles,user,perms-->
+<!--                /** = roles-->
+            </value>
+        </property>
+    </bean>
+
+    <!-- 单点登录过滤器 -->
+    <bean id="casFilter" class="org.apache.shiro.cas.CasFilter">
+        <!-- 配置验证成功时跳转的URL -->
+        <property name="successUrl" value="${shiro.successUrl}"/>
+        <!-- 配置验证错误时跳转的URL -->
+        <property name="failureUrl" value="${shiro.failureUrl}"/>
+    </bean>
+
+    <!--单点登出过滤器-->
+    <bean id="logoutFilter" class="org.apache.shiro.web.filter.authc.LogoutFilter">
+        <!-- 注销时重定向的URL -->
+        <property name="redirectUrl" value="${shiro.logoutUrl}"/>
+    </bean>
+
+    <!-- 注册自定义CasRealm -->
+    <bean id="casRealm" class="com.jsong.wiki.shiro.service.ShiroCasRealm">
+        <!-- cas服务端地址前缀,作为ticket校验 -->
+        <property name="casServerUrlPrefix" value="${shiro.cas.serverUrlPrefix}"/>
+        <!-- 应用服务地址,用来接收CAS服务端的票据 -->
+        <property name="casService" value="${shiro.cas.service}"/>
+    </bean>
+
+    <!-- 配置securityManager -->
+    <bean id="securityManager" class="org.apache.shiro.web.mgt.DefaultWebSecurityManager">
+        <property name="subjectFactory" ref="casSubjectFactory"/>
+        <property name="realm" ref="casRealm"/>
+    </bean>
+
+    <bean id="casSubjectFactory" class="org.apache.shiro.cas.CasSubjectFactory"></bean>
+
+    <!-- 配置lifecycleBeanPostProcessor,shiro bean的生命周期管理器,可以自动调用Spring IOC容器中shiro bean的生命周期方法(初始化/销毁)-->
+    <bean id="lifecycleBeanPostProcessor" class="org.apache.shiro.spring.LifecycleBeanPostProcessor"/>
+
+    <!-- 为了支持Shiro的注解需要定义DefaultAdvisorAutoProxyCreator和AuthorizationAttributeSourceAdvisor两个bean -->
+
+    <!-- 配置DefaultAdvisorAutoProxyCreator,必须配置了lifecycleBeanPostProcessor才能使用 -->
+    <bean class="org.springframework.aop.framework.autoproxy.DefaultAdvisorAutoProxyCreator"  depends-on="lifecycleBeanPostProcessor"/>
+
+    <!-- 配置AuthorizationAttributeSourceAdvisor -->
+    <bean class="org.apache.shiro.spring.security.interceptor.AuthorizationAttributeSourceAdvisor">
+        <property name="securityManager" ref="securityManager"/>
+    </bean>
+
+
+</beans>
